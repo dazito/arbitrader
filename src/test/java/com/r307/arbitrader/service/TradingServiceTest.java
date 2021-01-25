@@ -66,7 +66,7 @@ public class TradingServiceTest {
             new TradingConfiguration(),
             exchangeService,
             errorCollectorService);
-        spreadService = new SpreadService(tickerService, feeCache);
+        spreadService = new SpreadService(tickerService, feeCache, exchangeService);
         NotificationServiceImpl notificationService = new NotificationServiceImpl(javaMailSenderMock, notificationConfiguration);
         tradingConfiguration = new TradingConfiguration();
 

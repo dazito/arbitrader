@@ -27,6 +27,7 @@ public class SpreadServiceTest {
         MockitoAnnotations.initMocks(this);
         final TickerService tickerServiceMock = Mockito.mock(TickerService.class);
         final ExchangeFeeCache exchangeFeeCache = Mockito.mock(ExchangeFeeCache.class);
+        final ExchangeService exchangeService = Mockito.mock(ExchangeService.class);
 
         longExchange = new ExchangeBuilder("Long", CurrencyPair.BTC_USD)
             .withExchangeMetaData()
@@ -35,7 +36,7 @@ public class SpreadServiceTest {
             .withExchangeMetaData()
             .build();
 
-        spreadService = new SpreadService(tickerServiceMock, exchangeFeeCache);
+        spreadService = new SpreadService(tickerServiceMock, exchangeFeeCache, exchangeService);
     }
 
     @Test

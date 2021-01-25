@@ -32,10 +32,12 @@ public class SpreadService {
     private final Map<String, BigDecimal> maxSpreadOut = new HashMap<>();
     private final TickerService tickerService;
     private final ExchangeFeeCache feeCache;
+    private final ExchangeService exchangeService;
 
-    public SpreadService(TickerService tickerService, ExchangeFeeCache feeCache) {
+    public SpreadService(TickerService tickerService, ExchangeFeeCache feeCache, ExchangeService exchangeService) {
         this.tickerService = tickerService;
         this.feeCache = feeCache;
+        this.exchangeService = exchangeService;
     }
 
     /**
@@ -72,12 +74,12 @@ public class SpreadService {
      * @return A Spread representing the difference in price between the elements of the TradeCombination.
      */
     public Spread computeSpread(TradeCombination tradeCombination) {
-        Exchange longExchange = tradeCombination.getLongExchange();
-        Exchange shortExchange = tradeCombination.getShortExchange();
-        CurrencyPair currencyPair = tradeCombination.getCurrencyPair();
+        final Exchange longExchange = tradeCombination.getLongExchange();
+        final Exchange shortExchange = tradeCombination.getShortExchange();
+        final CurrencyPair currencyPair = tradeCombination.getCurrencyPair();
 
-        Ticker longTicker = tickerService.getTicker(longExchange, currencyPair);
-        Ticker shortTicker = tickerService.getTicker(shortExchange, currencyPair);
+        final Ticker longTicker = tickerService.getTicker(longExchange, currencyPair);
+        final Ticker shortTicker = tickerService.getTicker(shortExchange, currencyPair);
 
         if (tickerService.isInvalidTicker(longTicker) || tickerService.isInvalidTicker(shortTicker)) {
             return null;
@@ -87,12 +89,15 @@ public class SpreadService {
         // "in" matches against entrySpread to see if the prices are ready to enter a position.
         // "out" matches against exitTarget to see if the prices are ready to exit a position.
         // TODO: Remove this get call on the Optional
-        final BigDecimal longFee = feeCache.getCachedFee(longExchange, currencyPair).get();
-        final BigDecimal shortFee = feeCache.getCachedFee(shortExchange, currencyPair).get();
-        BigDecimal spreadIn = computeEntrySpread(longTicker.getAsk(), longFee, shortTicker.getBid(), shortFee);
-        BigDecimal spreadOut = computeExitSpread(longTicker.getBid(), longFee, shortTicker.getAsk(), shortFee);
+        final BigDecimal longFee = feeCache.getCachedFee(longExchange, currencyPair)
+            .orElseGet(() -> exchangeService.getExchangeFee(longExchange, tradeCombination.getCurrencyPair(), true));
+        final BigDecimal shortFee = feeCache.getCachedFee(shortExchange, currencyPair)
+            .orElseGet(() -> exchangeService.getExchangeFee(shortExchange, tradeCombination.getCurrencyPair(), true));
 
-        Spread spread = new Spread(
+        final BigDecimal spreadIn = computeEntrySpread(longTicker.getAsk(), longFee, shortTicker.getBid(), shortFee);
+        final BigDecimal spreadOut = computeExitSpread(longTicker.getBid(), longFee, shortTicker.getAsk(), shortFee);
+
+        final Spread spread = new Spread(
             currencyPair,
             longExchange,
             shortExchange,
