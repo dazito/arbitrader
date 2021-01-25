@@ -211,7 +211,7 @@ public class TradingService {
             return;
         }
 
-        BigDecimal spreadVerification = spreadService.computeSpread(longLimitPrice, shortLimitPrice);
+        final BigDecimal spreadVerification = spreadService.computeEntrySpread(longLimitPrice, longFeePercent, shortLimitPrice, shortFeePercent);
 
         if (!conditionService.isForceOpenCondition(spread.getCurrencyPair(), longExchangeName, shortExchangeName)
             && spreadVerification.compareTo(tradingConfiguration.getEntrySpread()) < 0) {
@@ -346,8 +346,10 @@ public class TradingService {
 
         LOGGER.debug("Limit prices: {}/{}", longLimitPrice, shortLimitPrice);
 
+        final BigDecimal longFeePercent = exchangeService.getExchangeFee(spread.getLongExchange(), spread.getCurrencyPair(), true);
+        final BigDecimal shortFeePercent = exchangeService.getExchangeFee(spread.getShortExchange(), spread.getCurrencyPair(), true);
         // this spread is based on the prices we calculated using the order book, so it's more accurate than the original estimate
-        BigDecimal spreadVerification = spreadService.computeSpread(longLimitPrice, shortLimitPrice);
+        final BigDecimal spreadVerification = spreadService.computeExitSpread(longLimitPrice, longFeePercent, shortLimitPrice, shortFeePercent);
 
         LOGGER.debug("Exit spread: {}", spreadVerification);
         LOGGER.debug("Exit spread target: {}", activePosition.getExitTarget());

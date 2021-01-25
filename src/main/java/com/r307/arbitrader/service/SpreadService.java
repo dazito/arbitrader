@@ -1,5 +1,6 @@
 package com.r307.arbitrader.service;
 
+import com.r307.arbitrader.service.cache.ExchangeFeeCache;
 import com.r307.arbitrader.service.model.Spread;
 import com.r307.arbitrader.service.model.TradeCombination;
 import org.knowm.xchange.Exchange;
@@ -30,9 +31,11 @@ public class SpreadService {
     private final Map<String, BigDecimal> minSpreadOut = new HashMap<>();
     private final Map<String, BigDecimal> maxSpreadOut = new HashMap<>();
     private final TickerService tickerService;
+    private final ExchangeFeeCache feeCache;
 
-    public SpreadService(TickerService tickerService) {
+    public SpreadService(TickerService tickerService, ExchangeFeeCache feeCache) {
         this.tickerService = tickerService;
+        this.feeCache = feeCache;
     }
 
     /**
@@ -83,8 +86,11 @@ public class SpreadService {
         // A Spread is a combination of a spread "in" and spread "out".
         // "in" matches against entrySpread to see if the prices are ready to enter a position.
         // "out" matches against exitTarget to see if the prices are ready to exit a position.
-        BigDecimal spreadIn = computeSpread(longTicker.getAsk(), shortTicker.getBid());
-        BigDecimal spreadOut = computeSpread(longTicker.getBid(), shortTicker.getAsk());
+        // TODO: Remove this get call on the Optional
+        final BigDecimal longFee = feeCache.getCachedFee(longExchange, currencyPair).get();
+        final BigDecimal shortFee = feeCache.getCachedFee(shortExchange, currencyPair).get();
+        BigDecimal spreadIn = computeEntrySpread(longTicker.getAsk(), longFee, shortTicker.getBid(), shortFee);
+        BigDecimal spreadOut = computeExitSpread(longTicker.getBid(), longFee, shortTicker.getAsk(), shortFee);
 
         Spread spread = new Spread(
             currencyPair,
@@ -117,6 +123,46 @@ public class SpreadService {
         BigDecimal scaledShortPrice = shortPrice.setScale(BTC_SCALE, RoundingMode.HALF_EVEN);
 
         return (scaledShortPrice.subtract(scaledLongPrice)).divide(scaledLongPrice, RoundingMode.HALF_EVEN);
+    }
+
+    public BigDecimal computeEntrySpread(BigDecimal longPrice, BigDecimal longFee, BigDecimal shortPrice, BigDecimal shortFee) {
+        // Formula: effectiveEntrySpread = shortPrice * (1 - shortFee) / (longPrice * (1 + longFee)) - 1;
+        // More info: https://github.com/scionaltera/arbitrader/issues/316
+
+        // 1 - shortFee
+        final BigDecimal oneMinusShortFee = BigDecimal.ONE.subtract(shortFee);
+        // shortPrice * (1 - shortFee)
+        final BigDecimal shortPriceTimesOneMinusShortFee = shortPrice.multiply(oneMinusShortFee);
+        // 1 + longFee
+        final BigDecimal onePlusLongFee = BigDecimal.ONE.add(longFee);
+        // longPrice * (1 + longFee)
+        final BigDecimal longPriceTimesOnePlusLongFee = longPrice.multiply(onePlusLongFee);
+        // shortPrice * (1 - shortFee) / (longPrice * (1 + longFee))
+        final BigDecimal divisionResult = shortPriceTimesOneMinusShortFee.divide(longPriceTimesOnePlusLongFee, BTC_SCALE, RoundingMode.HALF_EVEN);
+
+        // shortPrice * (1 - shortFee) / (longPrice * (1 + longFee)) - 1
+        return divisionResult.subtract(BigDecimal.ONE);
+
+    }
+
+    public BigDecimal computeExitSpread(BigDecimal longPrice, BigDecimal longFee, BigDecimal shortPrice, BigDecimal shortFee) {
+        // Formula: effectiveExitSpread = 1 - shortPrice * (1 + shortFee) / (longPrice * (1 - longFee));
+        // More info: https://github.com/scionaltera/arbitrader/issues/316
+
+        // 1 + shortFee
+        final BigDecimal shortFeePlusOne = BigDecimal.ONE.add(shortFee);
+        // shortPrice * (1 + shortFee)
+        final BigDecimal shortPriceTimesShortFeePlusOne = shortPrice.multiply(shortFeePlusOne);
+        // 1 - longFee
+        final BigDecimal oneMinusLongFee = BigDecimal.ONE.subtract(longFee);
+        // longPrice * (1 - longFee)
+        final BigDecimal rightSideDivision = longPrice.multiply(oneMinusLongFee);
+
+        // shortPrice * (1 + shortFee) / (longPrice * (1 - longFee))
+        final BigDecimal divisionResult = shortPriceTimesShortFeePlusOne.divide(rightSideDivision, BTC_SCALE, RoundingMode.HALF_EVEN);
+
+        // 1 - shortPrice * (1 + shortFee) / (longPrice * (1 - longFee))
+        return BigDecimal.ONE.subtract(divisionResult);
     }
 
     // build a summary of the contents of a spread map (high/low water marks)

@@ -6,6 +6,7 @@ import com.r307.arbitrader.config.JsonConfiguration;
 import com.r307.arbitrader.config.NotificationConfiguration;
 import com.r307.arbitrader.exception.OrderNotFoundException;
 import com.r307.arbitrader.config.TradingConfiguration;
+import com.r307.arbitrader.service.cache.ExchangeFeeCache;
 import com.r307.arbitrader.service.model.ArbitrageLog;
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
@@ -43,6 +44,8 @@ public class TradingServiceTest {
 
     @Mock
     private ExchangeService exchangeService;
+    @Mock
+    private ExchangeFeeCache feeCache;
     private SpreadService spreadService;
 
     @Mock
@@ -63,7 +66,7 @@ public class TradingServiceTest {
             new TradingConfiguration(),
             exchangeService,
             errorCollectorService);
-        spreadService = new SpreadService(tickerService);
+        spreadService = new SpreadService(tickerService, feeCache);
         NotificationServiceImpl notificationService = new NotificationServiceImpl(javaMailSenderMock, notificationConfiguration);
         tradingConfiguration = new TradingConfiguration();
 
