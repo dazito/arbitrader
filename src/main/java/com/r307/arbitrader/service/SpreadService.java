@@ -88,7 +88,6 @@ public class SpreadService {
         // A Spread is a combination of a spread "in" and spread "out".
         // "in" matches against entrySpread to see if the prices are ready to enter a position.
         // "out" matches against exitTarget to see if the prices are ready to exit a position.
-        // TODO: Remove this get call on the Optional
         final BigDecimal longFee = feeCache.getCachedFee(longExchange, currencyPair)
             .orElseGet(() -> exchangeService.getExchangeFee(longExchange, tradeCombination.getCurrencyPair(), true));
         final BigDecimal shortFee = feeCache.getCachedFee(shortExchange, currencyPair)
