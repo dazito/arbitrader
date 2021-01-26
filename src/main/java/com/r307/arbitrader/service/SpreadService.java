@@ -154,7 +154,7 @@ public class SpreadService {
         //Buy: the fees are added to the limit price
         final BigDecimal effectiveShortPrice = shortPrice.add(shortPrice.multiply(shortFee));
 
-        return computeSpread(longPrice,shortPrice);
+        return computeSpread(effectiveLongPrice,effectiveShortPrice);
     }
 
     // build a summary of the contents of a spread map (high/low water marks)
