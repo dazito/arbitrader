@@ -134,40 +134,27 @@ public class SpreadService {
         // Formula: effectiveEntrySpread = shortPrice * (1 - shortFee) / (longPrice * (1 + longFee)) - 1;
         // More info: https://github.com/scionaltera/arbitrader/issues/316
 
-        // 1 - shortFee
-        final BigDecimal oneMinusShortFee = BigDecimal.ONE.subtract(shortFee);
-        // shortPrice * (1 - shortFee)
-        final BigDecimal shortPriceTimesOneMinusShortFee = shortPrice.multiply(oneMinusShortFee);
-        // 1 + longFee
-        final BigDecimal onePlusLongFee = BigDecimal.ONE.add(longFee);
-        // longPrice * (1 + longFee)
-        final BigDecimal longPriceTimesOnePlusLongFee = longPrice.multiply(onePlusLongFee);
-        // shortPrice * (1 - shortFee) / (longPrice * (1 + longFee))
-        final BigDecimal divisionResult = shortPriceTimesOneMinusShortFee.divide(longPriceTimesOnePlusLongFee, BTC_SCALE, RoundingMode.HALF_EVEN);
+        //Calculate the long and short price we can actually trade for (fee included)
+        //Buy: the fees are added to the limit price
+        final BigDecimal effectiveLongPrice = longPrice.add(longPrice.multiply(longFee));
+        //Sell: the fees are subtracted from the limit price
+        final BigDecimal effectiveShortPrice = shortPrice.subtract(shortPrice.multiply(shortFee));
 
-        // shortPrice * (1 - shortFee) / (longPrice * (1 + longFee)) - 1
-        return divisionResult.subtract(BigDecimal.ONE);
+        return computeSpread(effectiveLongPrice,effectiveShortPrice);
 
     }
 
     public BigDecimal computeExitSpread(BigDecimal longPrice, BigDecimal longFee, BigDecimal shortPrice, BigDecimal shortFee) {
-        // Formula: effectiveExitSpread = 1 - shortPrice * (1 + shortFee) / (longPrice * (1 - longFee));
+        // Formula: effectiveExitSpread = shortPrice * (1 + shortFee) / (longPrice * (1 - longFee)) - 1;
         // More info: https://github.com/scionaltera/arbitrader/issues/316
 
-        // 1 + shortFee
-        final BigDecimal shortFeePlusOne = BigDecimal.ONE.add(shortFee);
-        // shortPrice * (1 + shortFee)
-        final BigDecimal shortPriceTimesShortFeePlusOne = shortPrice.multiply(shortFeePlusOne);
-        // 1 - longFee
-        final BigDecimal oneMinusLongFee = BigDecimal.ONE.subtract(longFee);
-        // longPrice * (1 - longFee)
-        final BigDecimal rightSideDivision = longPrice.multiply(oneMinusLongFee);
+        //Calculate the long and short price we can actually trade for (fee included)
+        //Sell: the fees are subtracted from the limit price
+        final BigDecimal effectiveLongPrice = longPrice.subtract(longPrice.multiply(longFee));
+        //Buy: the fees are added to the limit price
+        final BigDecimal effectiveShortPrice = shortPrice.add(shortPrice.multiply(shortFee));
 
-        // shortPrice * (1 + shortFee) / (longPrice * (1 - longFee))
-        final BigDecimal divisionResult = shortPriceTimesShortFeePlusOne.divide(rightSideDivision, BTC_SCALE, RoundingMode.HALF_EVEN);
-
-        // 1 - shortPrice * (1 + shortFee) / (longPrice * (1 - longFee))
-        return BigDecimal.ONE.subtract(divisionResult);
+        return computeSpread(longPrice,shortPrice);
     }
 
     // build a summary of the contents of a spread map (high/low water marks)
