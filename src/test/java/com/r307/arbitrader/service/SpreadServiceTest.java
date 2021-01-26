@@ -73,7 +73,7 @@ public class SpreadServiceTest {
         BigDecimal longFee = new BigDecimal("0.005");
 
         final BigDecimal exitSpread = spreadService.computeExitSpread(longPrice, longFee, shortPrice, shortFee);
-        assertEquals(new BigDecimal("-0.01771457"), exitSpread);
+        assertEquals(new BigDecimal("0.01771457"), exitSpread);
 
     }
 }
